@@ -19,7 +19,38 @@ let connected = false;
 const timeout = 3000;
 
 export function createOrJoinRoom(name: string) {
-    throw new Error("Not implemented");
+    return new Promise((resolve,reject) =>{
+        let timer:null|NodeJS.Timeout = null;
+        if(!connected){
+            reject("not connected");
+        }
+
+        socket.emit("create or join", name);
+
+        socket.once("full",(room:string) => {
+            if (timer) clearTimeout(timer);
+            reject(`room${room}is full`);
+        });
+
+        socket.once("created",()=>{
+            if (timer) clearTimeout(timer);
+            roomName.set(name);
+            resolve("created");
+        });
+        socket.once("joined",async(members:string[]) =>{
+            if (timer)clearTimeout(timer);
+            for(const member of members){
+                await sendOffer(newPeerConnection,member,member,sendSdp);
+            }
+
+            resolve("joined");
+        });
+        
+        timer = setTimeout(()=>{
+            reject("timeout waiting for server respponse");
+        },timeout);
+        
+    });
 }
 
 export function sendMessage(message: ChatMessage) {
