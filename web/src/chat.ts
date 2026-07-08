@@ -40,7 +40,7 @@ export function createOrJoinRoom(name: string) {
         socket.once("joined",async(members:string[]) =>{
             if (timer)clearTimeout(timer);
             for(const member of members){
-                await sendOffer(newPeerConnection,member,member,sendSdp);
+                await sendOffer(newPeerConnection, member, sendSdp);
             }
 
             resolve("joined");

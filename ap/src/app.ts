@@ -10,17 +10,16 @@ const io = new SocketIO(httpServer, {
     },
 });
 
-    const membersMap = new Map<string, string[]> = new Map():
+        const membersMap: Map<string, string[]> = new Map();
 
 io.on("connection",(socket) => {
-    console.log(user connectted: ${socket.id});
+    console.log("user connectted"); 
     socket.on("disconnect",() => {
-        console.log(user disconnected: ${socket.id});
+        console.log("user disconnected"); 
     });
     
     socket.on("create or join",(room:string)=>{
-        const lenth = membersMap.get(room)?.length ?? 0;
-
+        const numMembers = membersMap.get(room)?.length ?? 0;
         if(numMembers === 0){
             socket.join(room);
             membersMap.set(room, [socket.id]);
@@ -34,6 +33,25 @@ io.on("connection",(socket) => {
             socket.emit("full", room);
         }
     });
+    socket.on(
+        "offer",
+        (room: string,to: string, from:string, sdp:string) => {
+            io.sockets.in(room).emit("offer", to, from, sdp);
+        }
+    )
+    
+    socket.on(
+        "answer",
+        (room: string, to: string, from: string, sdp:string) => {
+            io.sockets.in(room).emit("answer", to , from, sdp);
+        }
+    )
+
+    socket.on(
+        "candidte",
+        (room: string, to: string, from: string, candidate: string) => {
+            io.sockets.in(room).emit("candidate", to, from, candidate);
+        } );
 });
 
 httpServer.listen(8080);
