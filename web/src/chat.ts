@@ -53,14 +53,6 @@ export function createOrJoinRoom(name: string) {
     });
 }
 
-export function sendMessage(message: ChatMessage) {
-    throw new Error("Not implemented");
-}
-
-function getPeer(to: string): RTCPeerConnection {
-    return connects.get(to)!.chatConnection!;
-}
-
 function newPeerConnection(to: string): RTCPeerConnection {
     const peer= new RTCPeerConnection();
     peer.onconnectionstatechange = (_) => {
@@ -74,7 +66,8 @@ function newPeerConnection(to: string): RTCPeerConnection {
         ){
             chatMembers.update((members) =>
                 members.filter((member) => member !== to)
-        );
+            );
+        }
 
     };
     peer.ondatachannel = (ev) => {
@@ -113,11 +106,65 @@ function sendSdp(
     to: string,
     from: string
 ) {
+    throw new Error("Not implemented");
     socket.emit(type, get(roomName), to, from, JSON.stringify(sdp));
 }
 
-function sendCandidate(candidate: RTCIceCandidate, to: string, from: string) {
-    throw new Error("Not implemented");
+function sendCandidate(candidate: RTCIceCandidate, to: string, from: string){
+    socket.emit(
+        "candidate",
+        get(roomName),
+        to,
+        from,
+        JSON.stringify(candidate)
+    );
+}
+
+export function sendMessage(message: ChatMessage){
+    connects.forEach(({ chatConnection: _, chatChannel }) => {
+        try {
+            chatChannel.send(JSON.stringify(message));
+        } catch (_) {}
+    });
+    socket.on("connect", () => {
+        connected = true;
+        // ユーザ名を設定する。
+        userName.set(socket.id);
+
+        // joinメッセージを受け取ったら新しくPeerConnectionを作成する。
+        socket.on("join", async (from: string) => {
+            newPeerConnection(from);
+        });
+
+        // offerを受け取ったら自分のSDPを設定し、answerを返す。
+        socket.on("offer", async (to: string, from: string, sdp: string) => {
+            if (to !== socket.id) return;
+            console.log(`[chat offer] to: ${to}, from: ${from}, sdp: ${sdp}`);
+            const peer = getPeer(from);
+
+            await setOffer(peer, JSON.parse(sdp));
+            await sendAnswer(peer, from, sendSdp);
+        });
+
+        // answerを受け取ったら自分のSDPを設定する。
+        socket.on("answer", async (to: string, from: string, sdp: string) => {
+            if (to !== socket.id) return;
+            console.log(`[chat answer] to: ${to}, from: ${from}, sdp: ${sdp}`);
+            const peer = getPeer(from);
+            await setAnswer(peer, JSON.parse(sdp));
+        });
+
+        // candidateを受け取ったらICEの候補を設定する。
+        socket.on("candidate", (to: string, from: string, candidate: string) => {
+            if (to !== socket.id) return;
+            console.log(
+                `[chat candidate] to: ${to}, from: ${from}, candidate: ${candidate}`
+            );
+            getPeer(from).addIceCandidate(JSON.parse(candidate));
+        });
+    });
+
+
 }
 
 socket.on("connect", () => {});
