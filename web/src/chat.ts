@@ -99,6 +99,11 @@ function newPeerConnection(to: string): RTCPeerConnection {
     return peer;
 }
 
+function getPeer(to: string): RTCPeerConnection {
+    return connects.get(to)!.chatConnection!;
+}
+
+
 
 function sendSdp(
     type: "offer" | "answer",
@@ -106,7 +111,6 @@ function sendSdp(
     to: string,
     from: string
 ) {
-    throw new Error("Not implemented");
     socket.emit(type, get(roomName), to, from, JSON.stringify(sdp));
 }
 
@@ -163,8 +167,6 @@ export function sendMessage(message: ChatMessage){
             getPeer(from).addIceCandidate(JSON.parse(candidate));
         });
     });
-
-
 }
 
 socket.on("connect", () => {});
